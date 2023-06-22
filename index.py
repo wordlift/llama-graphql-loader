@@ -6,7 +6,7 @@ from typing import List
 from bs4 import BeautifulSoup
 
 # Set up the necessary variables
-test_key = "B8X6lDceXhDO5aVg86npbFavLcQtnNhII35GolV8HlDdY5Tj9jMvTViUBlotsXUc"
+test_key = "You can add test key here"
 endpoint = "https://api.wordlift.io/graphql/graphql"
 headers = {
     "Authorization": f"Key {test_key}",
