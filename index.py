@@ -1,70 +1,50 @@
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
-from typing import List
-from llama_index.readers.base import BaseReader
+import os
+import json
+from llama_index import GPTVectorStoreIndex
+from WordLift_GraphQLReader import WordLiftGraphQLReader
 from llama_index.readers.schema.base import Document
 
+os.environ["OPENAI_API_KEY"] = 'Your openai_api_key'
+test_key = "Your test key"
+endpoint = "https://api.wordlift.io/graphql/graphql"
+headers = {
+    "Authorization": f"Key {test_key}",
+    "Content-Type": "application/json"
+}
+default_page = 0
+default_rows = 25
 
-class WordLiftGraphQLReader(BaseReader):
-    def __init__(self, endpoint, headers, query, fields, configure_options):
-        self.endpoint = endpoint
-        self.headers = headers
-        self.query = query
-        self.fields = fields
-        self.configure_options = configure_options
+example_fields = "Your example fields"
 
-    def fetch_data(self):
-        try:
-            response = requests.post(self.endpoint, json={
-                                     "query": self.query}, headers=self.headers)
-            response.raise_for_status()
-            data = response.json()
-            if 'errors' in data:
-                raise Exception(data['errors'])
-            return data
-        except requests.exceptions.RequestException as e:
-            print('Error connecting to the API:', e)
-            raise
+config_options = {
+    'text_fields': ['article_desc'],
+    'metadata_fields': ['article_url']
+}
+endpoint = "https://api.wordlift.io/graphql/graphql"
+headers = {
+    "Authorization": f"Key {test_key}",
+    "Content-Type": "application/json"
+}
+query = """
+Your query
+"""
+reader = WordLiftGraphQLReader(
+    endpoint, headers, query, example_fields, config_options)
 
-    def transform_data(self, data):
-        try:
-            data = data['data'][self.fields]
-            df = pd.DataFrame(data)
-            df = df.applymap(self.clean_value)
-            documents = []
-            for _, row in df.iterrows():
-                text_parts = [
-                    str(row[col]) for col in self.configure_options['text_fields'] if row[col] is not None]
-                text = ' '.join(text_parts)
-                metadata = {col: row[col]
-                            for col in self.configure_options['metadata_fields']}
-                document = Document(text, metadata)
-                documents.append(document)
-            return documents
-        except Exception as e:
-            print('Error transforming data:', e)
-            raise
 
-    def load_data(self):
-        data = self.fetch_data()
-        documents = self.transform_data(data)
-        return documents
+class DocumentEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Document):
+            return obj.__dict__
+        return super().default(obj)
 
-    @staticmethod
-    def clean_value(x):
-        if x is not None and not isinstance(x, list):
-            return WordLiftGraphQLReader.clean_html(x)
-        return x
 
-    @staticmethod
-    def clean_html(text):
-        if text.startswith('http://') or text.startswith('https://'):
-            response = requests.get(text)
-            html_content = response.text
-            soup = BeautifulSoup(html_content, 'html.parser')
-            cleaned_text = soup.get_text()
-        else:
-            soup = BeautifulSoup(text, 'html.parser')
-            cleaned_text = soup.get_text()
-        return cleaned_text
+documents = reader.load_data()
+documents_json = json.dumps(documents, cls=DocumentEncoder)
+index = GPTVectorStoreIndex.from_documents(documents_json)
+
+# Perform the query on the serialized index
+query_result = index.query('Where did the author go to school?')
+
+# Deserialize the query result
+query_result = json.loads(query_result, object_hook=lambda d: Document(**d))
