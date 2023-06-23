@@ -1,11 +1,13 @@
 import os
 import json
+import openai
 from llama_index import GPTVectorStoreIndex
-from WordLift_GraphQLReader import WordLiftGraphQLReader
 from llama_index.readers.schema.base import Document
+from WordLift_GraphQLReader import WordLiftGraphQLReader
 
-os.environ["OPENAI_API_KEY"] = 'Your openai_api_key'
-test_key = "Your test key"
+openai.api_key = 'YOUR OPENAI API KEY'
+os.environ["OPENAI_API_KEY"] = 'YOUR OPENAI API KEY'
+test_key = "YOUR TEST KEY"
 endpoint = "https://api.wordlift.io/graphql/graphql"
 headers = {
     "Authorization": f"Key {test_key}",
@@ -14,7 +16,7 @@ headers = {
 default_page = 0
 default_rows = 25
 
-example_fields = "Your example fields"
+fields = "articles"
 
 config_options = {
     'text_fields': ['article_desc'],
@@ -26,25 +28,41 @@ headers = {
     "Content-Type": "application/json"
 }
 query = """
-Your query
+query {
+  articles(page: 0, rows: 25) {
+    id: iri
+    title: string(name: "schema:headline")
+    date: string(name: "schema:datePublished")
+    author_id: string(name: "schema:author")    
+    article_author: resource(name: "schema:author") {
+      id: iri
+      name: string(name: "schema:name")
+    }
+    article_url: string(name: "schema:mainEntityOfPage")
+    article_about: resource(name: "schema:about") {
+      names: string(name: "schema:name")
+    }
+    article_desc: string(name: "schema:description")
+    mentions: resources(name: "schema:mentions") {
+      names: strings(name: "schema:name")
+    }
+    body: string(name: "wordpress:content")
+  }
+}
 """
 reader = WordLiftGraphQLReader(
-    endpoint, headers, query, example_fields, config_options)
-
-
-class DocumentEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Document):
-            return obj.__dict__
-        return super().default(obj)
-
+    endpoint, headers, query, fields, config_options)
 
 documents = reader.load_data()
-documents_json = json.dumps(documents, cls=DocumentEncoder)
-index = GPTVectorStoreIndex.from_documents(documents_json)
 
-# Perform the query on the serialized index
-query_result = index.query('Where did the author go to school?')
+converted_doc = []
+for doc in documents:
+    converted_doc_id = json.dumps(doc.doc_id)
+    converted_doc.append(Document(text=doc.text, doc_id=converted_doc_id,
+                         embedding=doc.embedding, doc_hash=doc.doc_hash, extra_info=doc.extra_info))
 
-# Deserialize the query result
-query_result = json.loads(query_result, object_hook=lambda d: Document(**d))
+index = GPTVectorStoreIndex.from_documents(converted_doc)
+query_engine = index.as_query_engine()
+result = query_engine.query("What did the author do growing up?")
+
+print("result: ", result)
