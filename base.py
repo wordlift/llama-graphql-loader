@@ -49,13 +49,12 @@ class WordLiftGraphQLReader(BaseReader):
         configure_options (dict): Additional configuration options.
     """
 
-    def __init__(self, endpoint, headers, query, fields, configure_options, inspect_api_key):
+    def __init__(self, endpoint, headers, query, fields, configure_options):
         self.endpoint = endpoint
         self.headers = headers
         self.query = query
         self.fields = fields
         self.configure_options = configure_options
-        self.inspect_api_key = inspect_api_key
 
     def fetch_data(self) -> dict:
         """
