@@ -98,11 +98,16 @@ class WordLiftGraphQLReader(BaseReader):
                 row = {}
                 for key, value in item.items():
                     row[key] = clean_value(value)
+
+                text_fields = self.configure_options.get('text_fields', [])
+                metadata_fields = self.configure_options.get(
+                    'metadata_fields', [])
+
                 text_parts = [
-                    str(row[col]) for col in self.configure_options['text_fields'] if row[col] is not None]
+                    str(row[col]) for col in text_fields if col in row and row[col] is not None]
                 text = ' '.join(text_parts)
                 extra_info = {col: row[col]
-                              for col in self.configure_options['metadata_fields']}
+                              for col in metadata_fields if col in row}
                 document = Document(text, extra_info=extra_info)
                 documents.append(document)
             return documents
