@@ -107,7 +107,7 @@ class WordLiftGraphQLReader(BaseReader):
                     str(row[col]) for col in text_fields if col in row and row[col] is not None]
                 text = ' '.join(text_parts)
                 extra_info = {col: row[col]
-                              for col in metadata_fields if col in row}
+                              for col in metadata_fields if col in row and isinstance(row[col], (str, int, float, type(None)))}
                 document = Document(text, extra_info=extra_info)
                 documents.append(document)
             return documents
@@ -146,12 +146,19 @@ def clean_html(text: str) -> str:
     """
     Cleans HTML content by fetching its text representation using BeautifulSoup.
     """
-    if text.startswith('http://') or text.startswith('https://'):
-        response = requests.get(text)
-        html_content = response.text
-        soup = BeautifulSoup(html_content, 'html.parser')
-        cleaned_text = soup.get_text()
-    else:
-        soup = BeautifulSoup(text, 'html.parser')
-        cleaned_text = soup.get_text()
-    return cleaned_text
+    if isinstance(text, dict):  
+        return str(text)
+    if isinstance(text, str):  
+        if text.startswith('http://') or text.startswith('https://'):
+            response = requests.get(text)
+            if response.status_code == 200:  
+                html_content = response.text
+                soup = BeautifulSoup(html_content, 'html.parser')
+                cleaned_text = soup.get_text()
+            else:
+                cleaned_text = text  
+        else:
+            soup = BeautifulSoup(text, 'html.parser')
+            cleaned_text = soup.get_text()
+        return cleaned_text
+    return str(text)  
