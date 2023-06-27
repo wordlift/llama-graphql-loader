@@ -94,33 +94,40 @@ class WordLiftGraphQLReader(BaseReader):
         try:
             data = data[DATA_KEY][self.fields]
             documents = []
+            text_fields = self.configure_options.get('text_fields', [])
+            metadata_fields = self.configure_options.get('metadata_fields', [])
+
             for item in data:
                 row = {}
-                text_fields = self.configure_options.get('text_fields', [])
-                metadata_fields = self.configure_options.get(
-                    'metadata_fields', [])
-
                 for key, value in item.items():
-                    if key in metadata_fields:
+                    if key in text_fields or key in metadata_fields:
                         row[key] = value
                     else:
                         row[key] = clean_value(value)
 
                 text_parts = [
-                    str(row[col]) for col in text_fields if col in row and row[col] is not None]
+                    get_separted_value(row, field.split('.'))
+                    for field in text_fields
+                    if get_separted_value(row, field.split('.')) is not None
+                ]
+
+                text_parts = flatten_list(text_parts)
                 text = ' '.join(text_parts)
+
                 extra_info = {}
-
-                for col in metadata_fields:
-                    if col in row:
-                        value = row[col]
-                        if isinstance(value, (str, int, float, type(None))):
-                            extra_info[col] = value
+                for field in metadata_fields:
+                    field_keys = field.split('.')
+                    value = get_separted_value(row, field_keys)
+                    if isinstance(value, list) and len(value) != 0:
+                        value = value[0]
+                    if text.startswith('http://') or text.startswith('https://'):
+                        extra_info[field] = value
                     else:
-                        extra_info[col] = None
+                        extra_info[field] = clean_value(value)
 
-                document = Document(text, extra_info=extra_info)
+                document = Document(text=text, extra_info=extra_info)
                 documents.append(document)
+
             return documents
         except Exception as e:
             logging.error('Error transforming data:', exc_info=True)
@@ -173,3 +180,38 @@ def clean_html(text: str) -> str:
             cleaned_text = soup.get_text()
         return cleaned_text
     return str(text)
+
+
+@staticmethod
+def get_separted_value(item: dict, field_keys: List[str]) -> any:
+    """
+    Retrieves the metadata value from the nested item based on field keys.
+    """
+
+    if not field_keys:
+        return item
+    key = field_keys[0]
+    if isinstance(item, list):
+        if len(item) == 0:
+            return None
+        else:
+            item = item[0]
+    if isinstance(item, dict) and key in item:
+        return get_separted_value(item[key], field_keys[1:])
+    return None
+
+
+@staticmethod
+def flatten_list(lst):
+    """
+    Flattens a nested list.
+    """
+    if lst is None:
+        return []
+    flattened = []
+    for item in lst:
+        if isinstance(item, list):
+            flattened.extend(flatten_list(item))
+        else:
+            flattened.append(item)
+    return flattened
