@@ -1,9 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 from typing import List
+from graphql import parse, print_ast
+from graphql.language.ast import FieldNode, ArgumentNode, NameNode, IntValueNode
 from llama_index.readers.base import BaseReader
 from llama_index.readers.schema.base import Document
 import logging
+from urllib.parse import urlparse
 
 DATA_KEY = 'data'
 ERRORS_KEY = 'errors'
@@ -40,6 +43,8 @@ class WordLiftGraphQLReader(BaseReader):
         query (str): The GraphQL query.
         fields (str): The fields to extract from the API response.
         configure_options (dict): Additional configuration options.
+        page (int): The page number.
+        rows (int): The number of rows per page.
 
     Attributes:
         endpoint (str): The API endpoint URL.
@@ -47,14 +52,18 @@ class WordLiftGraphQLReader(BaseReader):
         query (str): The GraphQL query.
         fields (str): The fields to extract from the API response.
         configure_options (dict): Additional configuration options.
+        page (int): The page number.
+        rows (int): The number of rows per page.
     """
 
-    def __init__(self, endpoint, headers, query, fields, configure_options):
+    def __init__(self, endpoint, headers, query, fields, configure_options, page, rows):
         self.endpoint = endpoint
         self.headers = headers
         self.query = query
         self.fields = fields
         self.configure_options = configure_options
+        self.page = page
+        self.rows = rows
 
     def fetch_data(self) -> dict:
         """
@@ -67,8 +76,9 @@ class WordLiftGraphQLReader(BaseReader):
             APIConnectionError: If there is an error connecting to the API.
         """
         try:
+            query = self.alter_query()
             response = requests.post(self.endpoint, json={
-                "query": self.query}, headers=self.headers)
+                "query": query}, headers=self.headers)
             response.raise_for_status()
             data = response.json()
             if ERRORS_KEY in data:
@@ -106,9 +116,9 @@ class WordLiftGraphQLReader(BaseReader):
                         row[key] = clean_value(value)
 
                 text_parts = [
-                    get_separted_value(row, field.split('.'))
+                    get_separated_value(row, field.split('.'))
                     for field in text_fields
-                    if get_separted_value(row, field.split('.')) is not None
+                    if get_separated_value(row, field.split('.')) is not None
                 ]
 
                 text_parts = flatten_list(text_parts)
@@ -117,10 +127,10 @@ class WordLiftGraphQLReader(BaseReader):
                 extra_info = {}
                 for field in metadata_fields:
                     field_keys = field.split('.')
-                    value = get_separted_value(row, field_keys)
+                    value = get_separated_value(row, field_keys)
                     if isinstance(value, list) and len(value) != 0:
                         value = value[0]
-                    if isinstance(value, str) and (value.startswith('http://') or value.startswith('https://')):
+                    if is_url(value) and is_valid_html(value):
                         extra_info[field] = value
                     else:
                         extra_info[field] = clean_value(value)
@@ -148,6 +158,63 @@ class WordLiftGraphQLReader(BaseReader):
             logging.error('Error loading data:', exc_info=True)
             raise
 
+    def alter_query(self):
+        """
+        Alters the GraphQL query by adding pagination arguments.
+
+        Returns:
+            str: The altered GraphQL query with pagination arguments.
+        """
+        query = self.query
+        page = self.page
+        rows = self.rows
+
+        ast = parse(query)
+
+        field_node = ast.definitions[0].selection_set.selections[0]
+
+        if not any(arg.name.value == 'page' for arg in field_node.arguments):
+            page_argument = ArgumentNode(
+                name=NameNode(value='page'),
+                value=IntValueNode(value=page)
+            )
+            rows_argument = ArgumentNode(
+                name=NameNode(value='rows'),
+                value=IntValueNode(value=rows)
+            )
+            field_node.arguments = field_node.arguments + \
+                (page_argument, rows_argument)
+        altered_query = print_ast(ast)
+        return altered_query
+
+
+def is_url(text: str) -> bool:
+    """
+    Checks if the given text is a URL.
+
+    Args:
+        text (str): The text to check.
+
+    Returns:
+        bool: True if the text is a URL, False otherwise.
+    """
+    try:
+        result = urlparse(text)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+
+def is_valid_html(content: str) -> bool:
+    """
+    Checks if the given content is a valid HTML document.
+    """
+    if content is None:
+        return False
+
+    soup = BeautifulSoup(content, 'html.parser')
+    return soup.find('html') is not None
+
 
 @staticmethod
 def clean_value(x: any) -> any:
@@ -164,10 +231,13 @@ def clean_html(text: str) -> str:
     """
     Cleans HTML content by fetching its text representation using BeautifulSoup.
     """
+    if text is None:
+        return ""
+
     if isinstance(text, dict):
         return str(text)
     if isinstance(text, str):
-        if text.startswith('http://') or text.startswith('https://'):
+        if is_url(text) and is_valid_html(text):
             response = requests.get(text)
             if response.status_code == 200:
                 html_content = response.text
@@ -183,7 +253,7 @@ def clean_html(text: str) -> str:
 
 
 @staticmethod
-def get_separted_value(item: dict, field_keys: List[str]) -> any:
+def get_separated_value(item: dict, field_keys: List[str]) -> any:
     """
     Retrieves the metadata value from the nested item based on field keys.
     """
@@ -197,7 +267,7 @@ def get_separted_value(item: dict, field_keys: List[str]) -> any:
         else:
             item = item[0]
     if isinstance(item, dict) and key in item:
-        return get_separted_value(item[key], field_keys[1:])
+        return get_separated_value(item[key], field_keys[1:])
     return None
 
 
