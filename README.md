@@ -25,6 +25,8 @@ headers = {
     "Authorization": "<YOUR_API_KEY>",
     "Content-Type": "application/json"
 }
+default_page = 0
+default_rows = 30
 query = """
 # Your GraphQL query here
 """
@@ -34,7 +36,7 @@ config_options = {
     'metadata_fields': ['<YOUR_METADATA_FIELDS>']
 }
 # Create an instance of the WordLiftGraphQLReader
-reader = WordLiftGraphQLReader(endpoint, headers, query, fields, config_options)
+reader = WordLiftGraphQLReader(endpoint, headers, query, fields, config_options, default_page, default_rows)
 
 # Load the data
 documents = reader.load_data()
