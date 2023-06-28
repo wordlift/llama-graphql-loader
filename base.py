@@ -120,7 +120,7 @@ class WordLiftGraphQLReader(BaseReader):
                     value = get_separted_value(row, field_keys)
                     if isinstance(value, list) and len(value) != 0:
                         value = value[0]
-                    if text.startswith('http://') or text.startswith('https://'):
+                    if isinstance(value, str) and (value.startswith('http://') or value.startswith('https://')):
                         extra_info[field] = value
                     else:
                         extra_info[field] = clean_value(value)
