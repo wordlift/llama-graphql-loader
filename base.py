@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from typing import List
 from graphql import parse, print_ast
-from graphql.language.ast import FieldNode, ArgumentNode, NameNode, IntValueNode
+from graphql.language.ast import ArgumentNode, NameNode, IntValueNode
 from llama_index.readers.base import BaseReader
 from llama_index.readers.schema.base import Document
 import logging
@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 
 DATA_KEY = 'data'
 ERRORS_KEY = 'errors'
+DEFAULT_PAGE = 0
+DEFAULT_ROWS = 500
 
 
 class WordLiftGraphQLReaderError(Exception):
@@ -56,14 +58,12 @@ class WordLiftGraphQLReader(BaseReader):
         rows (int): The number of rows per page.
     """
 
-    def __init__(self, endpoint, headers, query, fields, configure_options, page, rows):
+    def __init__(self, endpoint, headers, query, fields, configure_options):
         self.endpoint = endpoint
         self.headers = headers
         self.query = query
         self.fields = fields
         self.configure_options = configure_options
-        self.page = page
-        self.rows = rows
 
     def fetch_data(self) -> dict:
         """
@@ -166,8 +166,8 @@ class WordLiftGraphQLReader(BaseReader):
             str: The altered GraphQL query with pagination arguments.
         """
         query = self.query
-        page = self.page
-        rows = self.rows
+        page = DEFAULT_PAGE
+        rows = DEFAULT_ROWS
 
         ast = parse(query)
 
@@ -212,8 +212,15 @@ def is_valid_html(content: str) -> bool:
     if content is None:
         return False
 
-    soup = BeautifulSoup(content, 'html.parser')
-    return soup.find('html') is not None
+    if is_url(content):
+        response = requests.get(content)
+        if response.status_code == 200:
+            html_content = response.text
+            return BeautifulSoup(html_content, 'html.parser').find('html') is not None
+        else:
+            return False
+
+    return BeautifulSoup(content, 'html.parser').find('html') is not None
 
 
 @staticmethod
@@ -237,7 +244,7 @@ def clean_html(text: str) -> str:
     if isinstance(text, dict):
         return str(text)
     if isinstance(text, str):
-        if is_url(text) and is_valid_html(text):
+        if is_url(text):
             response = requests.get(text)
             if response.status_code == 200:
                 html_content = response.text

@@ -17,6 +17,8 @@ import json
 import logging
 from llama_index import GPTVectorStoreIndex
 from llama_index.readers.schema.base import Document
+from langchain.llms import OpenAI
+from langchain.chains.question_answering import load_qa_chain
 from base import WordLiftGraphQLReader
 
 # Set up the necessary configuration options
@@ -25,8 +27,7 @@ headers = {
     "Authorization": "<YOUR_API_KEY>",
     "Content-Type": "application/json"
 }
-default_page = 0
-default_rows = 30
+
 query = """
 # Your GraphQL query here
 """
@@ -36,7 +37,7 @@ config_options = {
     'metadata_fields': ['<YOUR_METADATA_FIELDS>']
 }
 # Create an instance of the WordLiftGraphQLReader
-reader = WordLiftGraphQLReader(endpoint, headers, query, fields, config_options, default_page, default_rows)
+reader = WordLiftGraphQLReader(endpoint, headers, query, fields, config_options)
 
 # Load the data
 documents = reader.load_data()
