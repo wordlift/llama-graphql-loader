@@ -1,11 +1,11 @@
 # WordLift GraphQL Reader
 
-The WordLift GraphQL Reader is a Python library that allows you to fetch and transform data from the WordLift GraphQL API. It provides a convenient way to load data from WordLift and transform it into a list of documents for further processing.
+The WordLift GraphQL Reader is a connector to fetch and transform data from a WordLift Knowledge Graph using your the WordLift Key. The connector provides a convenient way to load data from WordLift using a GraphQL query and transform it into a list of documents for further processing.
 
 ## Usage
 To use the WordLift GraphQL Reader, follow the steps below:
 
-1. Set up the necessary configuration options, such as the API endpoint, headers, query, fields, and configuration options.
+1. Set up the necessary configuration options, such as the API endpoint, headers, query, fields, and configuration options (make sure you have with you the [Wordlift Key](https://docs.wordlift.io/pages/key-concepts/#wordlift-key)).
 2. Create an instance of the `WordLiftGraphQLReader` class, passing in the configuration options.
 3. Use the `load_data` method to fetch and transform the data.
 4. Process the loaded documents as needed.
@@ -24,7 +24,7 @@ from base import WordLiftGraphQLReader
 # Set up the necessary configuration options
 endpoint = "https://api.wordlift.io/graphql/graphql"
 headers = {
-    "Authorization": "<YOUR_API_KEY>",
+    "Authorization": "<YOUR_WORDLIFT_KEY>",
     "Content-Type": "application/json"
 }
 
@@ -60,4 +60,4 @@ result = query_engine.query("<YOUR_QUERY>")
 logging.info("Result: %s", result)
 
 ```
-This loader is designed to be used as a way to load data from WordLift KGs into [LlamaIndex](https://github.com/emptycrown/llama-hub/tree/main/llama_hub/apify/actor#:~:text=load%20data%20into-,LlamaIndex,-and/or%20subsequently) and/or subsequently used as a Tool in a LangChain Agent. 
+This loader is designed to be used as a way to load data from WordLift KGs into [LlamaIndex](https://github.com/emptycrown/llama-hub/tree/main/llama_hub/apify/actor#:~:text=load%20data%20into-,LlamaIndex,-and/or%20subsequently) and/or subsequently used as a Tool in a [LangChain](https://github.com/hwchase17/langchain) Agent. 
