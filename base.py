@@ -6,6 +6,8 @@ from graphql.language.ast import ArgumentNode, NameNode, IntValueNode
 from llama_index.readers.base import BaseReader
 from llama_index.readers.schema.base import Document
 import logging
+import os
+import warnings
 from urllib.parse import urlparse
 
 DATA_KEY = 'data'
@@ -252,9 +254,15 @@ def clean_html(text: str) -> str:
                 cleaned_text = soup.get_text()
             else:
                 cleaned_text = text
+        elif os.path.isfile(text):
+            with open(text, 'r') as file:
+                soup = BeautifulSoup(file, 'html.parser')
+                cleaned_text = soup.get_text()
         else:
-            soup = BeautifulSoup(text, 'html.parser')
-            cleaned_text = soup.get_text()
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning)
+                soup = BeautifulSoup(text, 'html.parser')
+                cleaned_text = soup.get_text()
         return cleaned_text
     return str(text)
 
