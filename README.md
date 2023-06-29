@@ -1,4 +1,4 @@
-# WordLift GraphQL Reader
+# WordLift Reader
 
 The WordLift GraphQL Reader is a connector to fetch and transform data from a WordLift Knowledge Graph using your the WordLift Key. The connector provides a convenient way to load data from WordLift using a GraphQL query and transform it into a list of documents for further processing.
 
