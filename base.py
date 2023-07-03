@@ -1,8 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from typing import List
-from graphql import parse, print_ast
-from graphql.language.ast import ArgumentNode, NameNode, IntValueNode
 from llama_index.readers.base import BaseReader
 from llama_index.readers.schema.base import Document
 import logging
@@ -16,12 +14,12 @@ DEFAULT_PAGE = 0
 DEFAULT_ROWS = 500
 
 
-class WordLiftGraphQLReaderError(Exception):
-    """Base class for WordLiftGraphQLReader exceptions."""
+class WordLiftLoaderError(Exception):
+    """Base class for WordLiftLoader exceptions."""
     pass
 
 
-class APICallError(WordLiftGraphQLReaderError):
+class APICallError(WordLiftLoaderError):
     """Exception raised for errors in API calls."""
 
     def __init__(self, message):
@@ -29,7 +27,7 @@ class APICallError(WordLiftGraphQLReaderError):
         super().__init__(self.message)
 
 
-class DataTransformError(WordLiftGraphQLReaderError):
+class DataTransformError(WordLiftLoaderError):
     """Exception raised for errors in data transformation."""
 
     def __init__(self, message):
@@ -37,7 +35,7 @@ class DataTransformError(WordLiftGraphQLReaderError):
         super().__init__(self.message)
 
 
-class WordLiftGraphQLReader(BaseReader):
+class WordLiftLoader(BaseReader):
     """
     A reader class for fetching and transforming data from WordLift GraphQL API.
 
@@ -167,6 +165,8 @@ class WordLiftGraphQLReader(BaseReader):
         Returns:
             str: The altered GraphQL query with pagination arguments.
         """
+        from graphql import parse, print_ast
+        from graphql.language.ast import ArgumentNode, NameNode, IntValueNode
         query = self.query
         page = DEFAULT_PAGE
         rows = DEFAULT_ROWS
