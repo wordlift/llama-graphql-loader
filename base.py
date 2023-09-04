@@ -11,8 +11,6 @@ from urllib.parse import urlparse
 
 DATA_KEY = 'data'
 ERRORS_KEY = 'errors'
-DEFAULT_PAGE = 0
-DEFAULT_ROWS = 500
 
 
 class WordLiftLoaderError(Exception):
@@ -179,6 +177,9 @@ class WordLiftLoader(BaseReader):
         """
         from graphql import parse, print_ast
         from graphql.language.ast import ArgumentNode, NameNode, IntValueNode
+        DEFAULT_PAGE = 0
+        DEFAULT_ROWS = 500
+
         query = self.query
         page = DEFAULT_PAGE
         rows = DEFAULT_ROWS
