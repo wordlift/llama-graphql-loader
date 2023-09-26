@@ -16,6 +16,7 @@ DATA_KEY = "data"
 ERRORS_KEY = "errors"
 TIME_OUT = 10
 
+
 class WordLiftLoaderError(Exception):
     """Base class for WordLiftLoader exceptions."""
 
@@ -147,15 +148,13 @@ class WordLiftLoader(BaseReader):
                         value = value[0]
                     if is_url(value) and is_valid_html(value):
                         value = value.replace("\n", "")
-                        extra_info[field] = value
                     else:
                         cleaned_value = clean_value(value)
                         cleaned_value = cleaned_value.replace("\n", "")
-                        extra_info[field] = cleaned_value
+                    extra_info[field] = value
                 text = text.replace("\n", "")
                 plain_text = re.sub("<.*?>", "", text)
                 document = Document(text=plain_text, extra_info=extra_info)
-                print("================> document: ", document)
                 documents.append(document)
 
             return documents
