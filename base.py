@@ -114,6 +114,9 @@ class WordLiftLoader(BaseReader):
             documents = []
             text_fields = self.configure_options.get("text_fields", [])
             metadata_fields = self.configure_options.get("metadata_fields", [])
+            for i in range(len(text_fields)):
+                if text_fields[i] == 'url' or text_fields[i] == 'address':
+                    text_fields[i] = 'body'
 
             for item in data:
                 if not all(key in item for key in text_fields):
@@ -127,7 +130,6 @@ class WordLiftLoader(BaseReader):
                         row[key] = value
                     else:
                         row[key] = clean_value(value)
-
                 text_parts = [
                     get_separated_value(row, field.split("."))
                     for field in text_fields
